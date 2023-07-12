@@ -22,6 +22,7 @@ const updateMessage = debounce(async ({ channel, ts, text, payload }: any) => {
         channel: channel,
         ts: ts,
         text: text,
+        thread_ts: ts,  // update the message in the thread
         metadata: payload ? {
             event_type: "chat_gpt",
             event_payload: payload
@@ -37,6 +38,7 @@ app.event("app_mention", async ({ event, say }) => {
     const ms = await say({
         channel: event.channel,
         text: ':thinking_face:',
+        thread_ts: event.ts,  // respond in a thread linked to the event message
     });
 
     const answer = await api.sendMessage(question, {
@@ -63,6 +65,7 @@ app.message("reset", async ({ message, say }) => {
     await say({
         channel: message.channel,
         text: 'I reset your session',
+        thread_ts: message.ts,  // respond in a thread linked to the user message
     });
 });
 
@@ -71,7 +74,6 @@ app.message(async ({ message, say }) => {
 
     if(isUserMessage && message.text && message.text !== "reset") {
         console.log('user channel', message.channel);
-
 
         const { messages } = await app.client.conversations.history({
             channel: message.channel,
@@ -89,8 +91,8 @@ app.message(async ({ message, say }) => {
         const ms = await say({
             channel: message.channel,
             text: ':thinking_face:',
+            thread_ts: message.ts,  // respond in a thread linked to the user message
         });
-
 
         try {
             const answer = await api.sendMessage(message.text, {
@@ -99,18 +101,17 @@ app.message(async ({ message, say }) => {
                 onProgress: async (answer) => {
                     // Real-time update
                     await updateMessage({
-                        channel: ms.channel,
-                        ts: ms.ts,
+                        channel: ms.channel!,
+                        ts: ms.ts!,
                         text: answer.text,
                         payload: answer,
                     });
                 }
             });
 
-
             await updateMessage({
-                channel: ms.channel,
-                ts: ms.ts,
+                channel: ms.channel!,
+                ts: ms.ts!,
                 text: `${answer.text} :done:`,
                 payload: answer,
             });
